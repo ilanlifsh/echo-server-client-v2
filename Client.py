@@ -4,7 +4,7 @@ import os
 import time
 
 # Constants
-HOST = 'localhost'
+HOST = 'localhost' #change to the IP of the server
 PORT = 9098
 ADDR = (HOST, PORT)
 BUF_SIZE = 2
