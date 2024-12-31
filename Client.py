@@ -1,88 +1,94 @@
+import socket
+import Protocol as prot
+import os
+import time
 
-# Project Overview
+# Constants
+HOST = 'localhost'
+PORT = 9098
+ADDR = (HOST, PORT)
+BUF_SIZE = 2
 
-This project implements a basic client-server communication system where the client can send messages or files to the server. The server can process incoming messages and files, and the client can receive responses from the server. The server can also launch external applications (like Paint and Windows Media Player) when receiving certain types of files (such as images and media files).
 
-## Project Structure
+def connect_to_server():
+    connected = False
+    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    print(f'[CONNECTING] Connecting to server at {ADDR[0]}:{ADDR[1]} ...')
+    while not connected:
+        try:
+            client_socket.connect(ADDR)
+            connected = True
+            print("[CONNECTED]")
+        except Exception as e:
+            print("Server not found, retrying...")
+            time.sleep(1)
+    return client_socket
+def handle_server_disconnect(client_socket):
+    print("SERVER CONNECTION LOST, waiting for server connection...")
+    client_socket.close()
+    connect_to_server()
 
-### 1. `client.py`
+def send_message(message, client_socket):
+    try:
+        prot.send_all(data=message, socket=client_socket)
+        response = prot.recv_all(socket=client_socket).decode('utf-8')
+        return response
+    except Exception:
+        handle_server_disconnect(client_socket)
 
-The client-side code handles:
 
-- Connecting to the server
-- Sending messages or files
-- Handling server disconnections and retries
-- Sending exit signals to gracefully close the connection
+def send_file(file_path, client_socket):
 
-### 2. `server.py`
+    try:
+        client_socket.sendall(b"file")
+        prot.send_file(socket=client_socket, file_name=file_path)
+        ack = prot.recv_all(socket=client_socket).decode()
+        if ack == "ACK":
+            print("File was sent successfully")
+    except (ConnectionRefusedError, ConnectionResetError):
+        handle_server_disconnect(client_socket)
 
-The server-side code handles:
+    except Exception as e:
+        print(f"[ERROR] Sending file failed: {e}")
 
-- Listening for client connections
-- Receiving and responding to messages
-- Receiving and processing files (like images and media files)
-- Launching external applications (e.g., Paint, Windows Media Player)
+def disconnect(client_socket):
+    try:
+        client_socket.sendall(b"exit")
+        client_socket.close()
+        print("[DISCONNECTED]")
+    except Exception as e:
+        print(f"[ERROR] Disconnection failed: {e}")
 
-### 3. `Protocol.py`
 
-Contains the communication protocol for the client-server interaction. This includes:
+if __name__ == "__main__":
+    client_socket = connect_to_server()
 
-- Sending and receiving messages with headers
-- Sending and receiving files, including handling file headers and sizes
-- Managing socket communication in a reliable manner
+    while True:
+        try:
+            user_input = input("Enter a command (message/send file/exit): ").lower()
 
----
+            if user_input == "exit":
+                disconnect(client_socket)
+                break
+            elif user_input == "send file":
+                while True:
+                    file_path = input("Enter the file path to send: ")
+                    if file_path == 'exit':
+                        break
+                    if not os.path.exists(file_path):
+                        print(f"[ERROR] File not found: \"{file_path}\". Try again!")
+                        continue
+                    send_file(file_path, client_socket)
 
-# Usage
+            elif user_input:
+                response = send_message(user_input,client_socket)
+                if response:
+                    print("[RECEIVED]:", response)
 
-### Client:
 
-1. To run the client, execute the following command:
-
-    ```bash
-    python client.py
-    ```
-
-2. The client will attempt to connect to the server. Once connected, you can send messages or files.
-    - To send a message, simply type your message and press enter.
-    - To send a file, type `send file`, then provide the file path when prompted.
-    - To exit the client, type `exit`.
-
-### Server:
-
-1. To run the server, execute the following command:
-
-    ```bash
-    python server.py
-    ```
-
-2. The server will wait for client connections and handle messages and files received from the client.
-
-### Protocol Handling:
-
-The `Protocol.py` file provides the necessary functions for:
-
-- `send_all(data, socket)` – Sends data with a header to the socket.
-- `recv_all(socket)` – Receives data from the socket, managing the header and message length.
-- `send_file(socket, file_name)` – Sends a file through the socket, including file size and name.
-- `recv_file(socket)` – Receives a file from the socket and saves it locally.
-
----
-
-# File Handling
-
-- **Sending Files**: The client can send files of various types (e.g., `.jpg`, `.png`, `.mp3`, `.mp4`).
-- **Receiving Files**: The server can process files such as images (opened in Paint) and media files (opened in Windows Media Player).
-
----
-
-# Requirements
-
-- Python 3.x
-- `os`, `socket`, `Protocol` modules (ensure `Protocol.py` is in the same directory as `client.py` and `server.py`)
-
----
-
-# License
-
-This project does not have an MIT License or any specific licensing. You may use or modify the code as you wish
+        except (ConnectionRefusedError, ConnectionResetError):
+            print("Server not found, waiting for server connection...")
+            handle_server_disconnect(client_socket)
+        except Exception as e:
+            print(e)
+            break
