@@ -42,7 +42,7 @@ def send_file(file_path, client_socket):
     try:
         client_socket.sendall(b"file")
         prot.send_file(socket=client_socket, file_name=file_path)
-        ack = prot.recv_all(socket=client_socket).decode()
+        ack = prot.recv_all(socket=client_socket).decode('utf-8')
         if ack == "ACK":
             print("File was sent successfully")
     except (ConnectionRefusedError, ConnectionResetError):
