@@ -8,8 +8,8 @@ HOST = 'localhost'
 PORT = 9098
 ADDR = (HOST, PORT)
 BUF_SIZE = 1024
-PAINT_PATH = r"C:\Windows\System32\mspaint.exe"
-MEDIA_PLAYER = r"C:\Users\Ilan\Documents\wmplayer.exe"
+PAINT_PATH = r"C:\YOUR\PATH\TO\mspaint.exe"
+MEDIA_PLAYER = r"C:\YOUR\PATH\TO\wmplayer.exe"
 
 # Function to bind server and wait for client connection
 def start_server():
@@ -52,9 +52,11 @@ def manage_client_connection():
             data = client_socket.recv(BUF_SIZE)
 
             if not data:
+                print(f"Server Ready, Waiting for client on {ADDR}")
                 client_socket.close()
                 # No data received, handle disconnect
                 client_socket, client_addr = server_socket.accept()
+                print(f"New client connected on {client_addr}")
                 continue
 
             elif data.decode() == 'exit':
