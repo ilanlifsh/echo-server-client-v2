@@ -23,7 +23,7 @@ def start_server():
 
 # Function to handle client disconnection
 def handle_client_disconnect(server_socket):
-    server_socket.close()
+
     print("Server socket closed.")
     return start_server()
 
@@ -41,12 +41,6 @@ def handle_file_request(client_socket):
         prot.send_all(data=ACK, socket=client_socket)
         print(f"[SEND TO CLIENT]: {ACK}")
 
-# Function to handle received messages from the client
-def handle_client_message(data, client_socket, client_addr):
-    decoded_data = data[HEADER_SIZE:].decode('utf-8')  # Ensure it's decoded properly
-    print(f"[RECEIVED FROM CLIENT AT] {client_addr}: {decoded_data}")
-    client_socket.sendall(data)
-    print(f"[SEND TO CLIENT]: {decoded_data}")
 
 # Function to manage communication with the client
 def manage_client_connection():
@@ -58,8 +52,9 @@ def manage_client_connection():
             data = client_socket.recv(BUF_SIZE)
 
             if not data:
+                client_socket.close()
                 # No data received, handle disconnect
-                client_socket, client_addr = handle_client_disconnect(server_socket)
+                client_socket, client_addr = server_socket.accept()
                 continue
 
             elif data.decode() == 'exit':
@@ -69,7 +64,9 @@ def manage_client_connection():
                 handle_file_request(client_socket)
 
             elif data:
-                handle_client_message(data, client_socket, client_addr)
+                print(f"[RECEIVED FROM CLIENT AT] {client_addr}: {data[HEADER_SIZE:].decode('utf-8')}")
+                client_socket.sendall(data)
+                print(f"[SEND TO CLIENT]: {data[HEADER_SIZE:].decode()}")
 
         except Exception as e:
             print(f"[ERROR]: {e}")
@@ -82,4 +79,3 @@ def manage_client_connection():
 
 if __name__ == "__main__":
     manage_client_connection()
-
